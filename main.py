@@ -1,4 +1,18 @@
 import bcrypt 
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import dash
+import dash_core_components as dcc
+import dash_html_components as html
+import plotly.graph_objects as go
+import pandas as pd
+import PyPDF2 as p2
+import django as dj
+import textblob as tb
+import tensorflow as tf
+import spacy as sp
+import nltk as nl
 
 UNIVERSITY: tuple = [('https://www.4icu.org/ng/a-z/')]
 
@@ -151,8 +165,7 @@ class assign_university:
 
     def score(self, jamb_score):
         self.jamb_score = jamb_score
-        return self.jamb_score
-    def add_link(self, links, university_url):
+        return self.jamb_score 
         self.choose_university[links] = university_url
         print("Link added successfully!")
     pass
