@@ -12,7 +12,17 @@ import django as dj
 import textblob as tb
 import tensorflow as tf
 import spacy as sp
-import nltk as nl
+import nltk as n
+from fastapi import FastAPI, HTTPException
+import httpx
+import os
+import asyncio
+import openai 
+from dotenv import load_dotenv
+
+
+
+
 
 UNIVERSITY: tuple = [('https://www.4icu.org/ng/a-z/')]
 
@@ -31,6 +41,27 @@ Student_A =  {"ENG" : 80,
 # replace values with university website links  
 # how to extract each university with it's links
 
+
+load_dotenv()
+app = FastAPI()
+
+OPENAI_API_KEY = os.getenv('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')
+
+@app.post("/ask")
+async def ask(question: str):
+    if not OPENAI_API_KEY:
+        raise HTTPException(status_code=500, detail="API key not set")
+    
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-4",
+            messages=[
+                {"role": "user", "content": question}
+        ])
+        return {"response": response["choices"][0]["message"]["content"]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
 
 def greetings(self):
     print("Hello! Welcome to the University Website. How can we help you today?")
