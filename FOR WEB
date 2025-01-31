@@ -1,0 +1,31 @@
+project/
+│
+├── main.py
+├── routers/
+│   ├── __init__.py
+│   ├── user.py
+│   ├── application.py
+│   ├── document.py
+│   ├── notification.py
+│   ├── payment.py
+│   ├── interview.py
+│
+├── models/
+│   ├── __init__.py
+│   ├── user.py
+│   ├── application.py
+│   ├── document.py
+│   ├── notification.py
+│   ├── payment.py
+│   ├── interview.py
+│
+├── services/
+│   ├── __init__.py
+│   ├── user_service.py
+│   ├── application_service.py
+│   ├── document_service.py
+│   ├── notification_service.py
+│   ├── payment_service.py
+│   ├── interview_service.py
+│
+└── .env
