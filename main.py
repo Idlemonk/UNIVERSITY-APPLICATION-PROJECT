@@ -4,6 +4,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import dash
 import dash_core_components as dcc
+from dash import html
 import dash_html_components as html
 import plotly.graph_objects as go
 import pandas as pd
@@ -19,22 +20,25 @@ import os
 import asyncio
 import openai
 from dotenv import load_dotenv
+import mysql.connector
+import re
+from fastapi import FastAPI, APIRouter, Depends
+from routers import user, application, document, notification, payment, interview
+from models.user import User
+from services.user_service import create_user, get_user 
+from pydantic import BaseModel
+
 
 class UniversityAdmissionDashboard:
     def __init__(self):
         """Initialize the dashboard with user details"""
-        print("\n=== Welcome to the University Admission Portal ===\n")
-        self.username = input("Enter your Username: ")
-        self.name = input("Enter your Full Name: ")
-        self.email = input("Enter your Email: ")
         self.profile = {}
         self.application_status = "Not Submitted"  # Default status
         self.documents = {}
         self.notifications = []
         self.payments = []
-        self.interviews = {}
+        self.interviews = []
 
-    # 1. User Profile Management
     def update_profile(self):
         print("\n=== Update Profile ===")
         phone = input("Enter your Phone Number: ")
@@ -47,7 +51,6 @@ class UniversityAdmissionDashboard:
         }
         print("Profile updated successfully.")
 
-    # 2. Application Management
     def submit_application(self):
         print("\n=== Submit Application ===")
         program = input("Enter the Program Name: ")
@@ -58,7 +61,6 @@ class UniversityAdmissionDashboard:
     def check_application_status(self):
         print(f"\nCurrent application status: {self.application_status}")
 
-    # 3. Document Upload & Verification
     def upload_document(self):
         print("\n=== Upload Documents ===")
         doc_name = input("Enter Document Name (e.g., Transcript, ID Proof): ")
@@ -71,7 +73,6 @@ class UniversityAdmissionDashboard:
         doc_name = input("Enter Document Name to Check Status: ")
         print(self.documents.get(doc_name, "Document not found."))
 
-    # 4. Notifications & Alerts
     def add_notification(self, message):
         self.notifications.append(message)
 
@@ -83,7 +84,6 @@ class UniversityAdmissionDashboard:
         else:
             print("\nNo new notifications.")
 
-    # 5. Payment & Fee Management
     def make_payment(self):
         print("\n=== Make Payment ===")
         amount = input("Enter Payment Amount: ")
@@ -100,7 +100,6 @@ class UniversityAdmissionDashboard:
         else:
             print("No payments made.")
 
-    # 6. Interview & Exam Scheduling
     def schedule_interview(self):
         print("\n=== Schedule Interview ===")
         date = input("Enter Interview Date (YYYY-MM-DD): ")
@@ -112,65 +111,15 @@ class UniversityAdmissionDashboard:
         print("\n=== Interview Details ===")
         print(self.interviews.get("Interview", "No interview scheduled."))
 
-# ==== Run the Program ====
-dashboard = UniversityAdmissionDashboard()
-
-while True:
-    print("\n=== Dashboard Menu ===")
-    print("1. Update Profile")
-    print("2. Submit Application")
-    print("3. Check Application Status")
-    print("4. Upload Document")
-    print("5. Check Document Status")
-    print("6. View Notifications")
-    print("7. Make Payment")
-    print("8. View Payment History")
-    print("9. Schedule Interview")
-    print("10. View Interview Details")
-    print("11. Exit")
-
-    choice = input("\nEnter your choice (1-11): ")
-
-    if choice == "1":
-        dashboard.update_profile()
-    elif choice == "2":
-        dashboard.submit_application()
-    elif choice == "3":
-        dashboard.check_application_status()
-    elif choice == "4":
-        dashboard.upload_document()
-    elif choice == "5":
-        dashboard.check_document_status()
-    elif choice == "6":
-        dashboard.get_notifications()
-    elif choice == "7":
-        dashboard.make_payment()
-    elif choice == "8":
-        dashboard.get_payment_history()
-    elif choice == "9":
-        dashboard.schedule_interview()
-    elif choice == "10":
-        dashboard.get_interview_details()
-    elif choice == "11":
-        print("\nExiting the dashboard. Goodbye!")
-        break
-    else:
-        print("\nInvalid choice. Please enter a number between 1 and 11.")
-
-# Additional classes and methods
-
 class UniversityWebsite:
     def __init__(self):
-        self.greetings = []
         self.create_account = {}
         self.signed_in_users = {}
         self.contact_information = {}
-        self.plan_for_university = {}
-        self.apply_to_university = {}
-        self.pay_for_university = {}
 
     def is_valid_email(self, email):
-        return "@" in email and "."
+        pattern = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
+        return re.match(pattern, email) is not None
 
     def hash_password(self, password):
         salt = bcrypt.gensalt()
@@ -275,11 +224,23 @@ class ApplyForUniversityAdmission:
         print("Please choose your third course.")
         self.choose_faculty_and_dept()
 
+load_dotenv()
+OPENAI_API_KEY = os.getenv('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')
+if not isinstance(OPENAI_API_KEY, str):
+    raise ValueError("OPENAI_API_KEY must be a string")
+
+
 # FastAPI setup
 app = FastAPI()
 
-load_dotenv()
-OPENAI_API_KEY = getenv('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')
+app.include_router (user.router)
+app.include_router(application.router)
+app.include_router(jamb.router)
+app.include_router(document.router)
+app.include_router(notification.router)
+app.include_router(payment.router)
+app.include_router(interview.router)
+
 
 @app.post("/ask")
 async def ask(question: str):
@@ -291,13 +252,165 @@ async def ask(question: str):
             model="gpt-4",
             messages=[
                 {"role": "user", "content": question}
-            ]
+            ],
+            api_key = OPENAI_API_KEY
         )
         return {"response": response["choices"][0]["message"]["content"]}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+
+router = APIRouter()
+@router.post("/users/")
+async def sign_up(user: User):
+    return create_user(user)
+
+@router.get("/users/{user_id}")
+async def read_user(user_id: int):
+    return get_user(user_id)
+
+class User(BaseModel):
+    username: str
+    first_name: str
+    maiden_name: str
+    last_name: str
+    password: str
+    email: str
+    state_of_origin: str
+    residential_address: str
+
+
+def create_user(user: User):
+    hashed_password = bcrypt.hashpw(user.password.encode('utf-8'), bcrypt.gensalt())
+    # Store user in database (this is a placeholder)
+    return {"message": "User created successfully"}
+
+def get_user(user_id: int):
+    # Retrieve user from database (this is a placeholder)
+    return {"message": "User retrieved successfully"}
+
+
+def submit_application(program: str, degree_level: str):
+    # Logic to submit application (this is a placeholder)
+    return {"message": f"Application for {program} ({degree_level}) submitted successfully"}
+
+def check_application_status():
+    # Logic to check application status (this is a placeholder)
+    return {"message": "Current application status: Submitted"}
+
+
+def upload_document(doc_name: str, file_path: str):
+    # Logic to upload document (this is a placeholder)
+    return {"message": f"{doc_name} uploaded successfully"}
+
+def check_document_status(doc_name: str):
+    # Logic to check document status (this is a placeholder)
+    return {"message": "Document status: Pending"}
+    
+    
+def add_notification(message: str):
+    # Logic to add notification (this is a placeholder)
+    return {"message": "Notification added successfully"}
+
+def get_notifications():
+    # Logic to get notifications (this is a placeholder)
+    return {"message": "No new notifications"}
+
+
+def make_payment(amount: str, method: str):
+    # Logic to make payment (this is a placeholder)
+    return {"message": "Payment successful"}
+
+def get_payment_history():
+    # Logic to get payment history (this is a placeholder)
+    return {"message": "No payments made"}
+
+
+def schedule_interview(date: str, time: str):
+    # Logic to schedule interview (this is a placeholder)
+    return {"message": f"Interview scheduled for {date} at {time}"}
+
+def get_interview_details():
+    # Logic to get interview details (this is a placeholder)
+    return {"message": "No interview scheduled"}  
 
 
 
+# Create instances of all classes
+dashboard = UniversityAdmissionDashboard()
+website = UniversityWebsite()
+assigner = AssignUniversity()
+applicant = ApplyForUniversityAdmission()
 
+# Main loop to synchronize all classes
+while True:
+    print("\n=== Dashboard Menu ===")
+    print("1. Update Profile")
+    print("2. Submit Application")
+    print("3. Check Application Status")
+    print("4. Upload Document")
+    print("5. Check Document Status")
+    print("6. View Notifications")
+    print("7. Make Payment")
+    print("8. View Payment History")
+    print("9. Schedule Interview")
+    print("10. View Interview Details")
+    print("11. Sign Up")
+    print("12. Sign In")
+    print("13. Assign University Based on Score")
+    print("14. Choose Faculty and Department")
+    print("15. Choose Second Course")
+    print("16. Choose Third Course")
+    print("17. Exit")
 
+    choice = input("\nEnter your choice (1-17): ")
+
+    if choice == "1":
+        dashboard.update_profile()
+    elif choice == "2":
+        dashboard.submit_application()
+    elif choice == "3":
+        dashboard.check_application_status()
+    elif choice == "4":
+        dashboard.upload_document()
+    elif choice == "5":
+        dashboard.check_document_status()
+    elif choice == "6":
+        dashboard.get_notifications()
+    elif choice == "7":
+        dashboard.make_payment()
+    elif choice == "8":
+        dashboard.get_payment_history()
+    elif choice == "9":
+        dashboard.schedule_interview()
+    elif choice == "10":
+        dashboard.get_interview_details()
+    elif choice == "11":
+        username = input("Enter Username: ")
+        first_name = input("Enter First Name: ")
+        maiden_name = input("Enter Maiden Name (optional): ")
+        last_name = input("Enter Last Name: ")
+        password = input("Enter Password: ")
+        email = input("Enter Email: ")
+        state_of_origin = input("Enter State of Origin: ")
+        residential_address = input("Enter Residential Address: ")
+        website.sign_up(username, first_name, maiden_name, last_name, password, email, state_of_origin, residential_address)
+    elif choice == "12":
+        identifier = input("Enter Username or Email: ")
+        password = input("Enter Password: ")
+        website.sign_in(identifier, password)
+    elif choice == "13":
+        score = int(input("Enter JAMB Score: "))
+        assigned_universities = assigner.assigning_university_based_on_score(score)
+        print(f"Assigned Universities: {assigned_universities}")
+    elif choice == "14":
+        applicant.choose_faculty_and_dept()
+    elif choice == "15":
+        applicant.second_course_choice()
+    elif choice == "16":
+        applicant.third_course_choice()
+    elif choice == "17":
+        print("\nExiting the dashboard. Goodbye!")
+        break
+    else:
+        print("\nInvalid choice. Please enter a number between 1 and 17.")
